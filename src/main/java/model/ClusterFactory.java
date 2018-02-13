@@ -2,17 +2,17 @@ package model;
 
 import database.DatabaseHandler;
 import javafx.util.Pair;
-import org.bson.BsonArray;
 import org.bson.Document;
+import org.springframework.stereotype.Component;
 import util.Utils;
 
-import javax.print.Doc;
 import java.util.*;
 
+@Component
 public class ClusterFactory {
 
     private Random random;
-    private DatabaseHandler dbHandler;
+    public DatabaseHandler dbHandler;
 
     private float bombFrequency = 0.2f;
 
@@ -43,7 +43,10 @@ public class ClusterFactory {
         return cluster;
     }
 
-    public int setClick(int x, int y){
+    public HashMap<String, Integer> setClick(int x, int y){
+
+        /* contains all cells that need to be opened by this click with key string and value */
+        HashMap<String, Integer> out = new HashMap<String, Integer>();
 
         Pair<Integer, Integer> pair = Utils.getClusterForCoordinates(x, y);
         int startX = pair.getKey();
@@ -62,15 +65,17 @@ public class ClusterFactory {
 
             /* if click on empty, open all adjacent empty cells */
             if(value == 9) {
-                getAdjacentOfEmptyCell(cluster, x, y);
+                HashMap<String, Integer> toClick = getAdjacentOfEmptyCell(cluster, x, y);
+                out.putAll(toClick);
             }
 
             /* set value of cell in display set */
             dbHandler.updateCellInDisplay(startX, startY, keyString, value);
+            out.put(keyString, value);
 
-            return value;
+            return out;
         }else{
-            return -1;
+            return null;
         }
     }
 

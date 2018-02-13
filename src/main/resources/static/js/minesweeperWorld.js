@@ -48,6 +48,9 @@ var cellSize = 50;
 
 var clusterRequestBuffer = 10;
 
+var stompClient = null;
+var UID;
+
 var leftBound;
 var rightBound;
 var upBound;
@@ -198,6 +201,11 @@ initAll();
 function initAll(){
   /* set canvas size */
   initCanvas();
+
+  connect();
+
+  checkIfUserdataCookieIsSet();
+
   /* get position and fetch respective cluster */
   var oldPosition = getPositionCookie();
   initCluster(oldPosition.x, oldPosition.y);
@@ -471,17 +479,103 @@ function refreshClusterDownRight(clusterRD){
   dataRD = clusterRD;
 }
 
+function setCellInDisplay(x, y, value){
+    setValueInCluster(x, y, value);
+    if(value == 11){
+        playBombSound();
+    }else{
+        playClickSound();
+    }
+}
+
+function setFlagInDisplay(x, y){
+    setValueInCluster(x, y, 10);
+    playFlagSound();
+}
+
+/* ############################
+ * WEBSOCKET
+ * ############################
+ */
+
+function connect() {
+    var socket = new SockJS('/minesweeperworld');
+    stompClient = Stomp.over(socket);
+
+    stompClient.debug = null
+
+    stompClient.connect({}, function(frame) {
+
+        console.log('Connected.');
+
+        /* channel for cells to be opened */
+        stompClient.subscribe('/notifications/clickResponse', function(clickResponse){
+            var clickResponseObj = JSON.parse(clickResponse.body);
+            setCellInDisplay(clickResponseObj.x, clickResponseObj.y, clickResponseObj.value);
+        });
+
+        /* channel for flags to be set */
+        stompClient.subscribe('/notifications/flagResponse', function(flagResponse){
+            var flagResponseObj = JSON.parse(flagResponse.body);
+            setFlagInDisplay(flagResponseObj.x, flagResponseObj.y);
+        });
+
+        if(UID){
+            subscribeToPersonalChannels();
+        }
+    });
+}
+
+function subscribeToPersonalChannels(){
+    /* channel for simple messages */
+    stompClient.subscribe('/notifications/'+UID+"/message", function(response){
+       var responseObj = JSON.parse(response.body);
+       console.log("Got personal message: "+responseObj);
+    });
+    /* channel for failed flag */
+    stompClient.subscribe('/notifications/'+UID+"/failedFlag", function(response){
+        var responseObj = JSON.parse(response.body);
+        console.log("Got personal failed flag: "+responseObj);
+    });
+    /* channel for bomb */
+    stompClient.subscribe('/notifications/'+UID+"/bomb", function(response){
+        var responseObj = JSON.parse(response.body);
+        console.log("Got personal bomb: "+responseObj);
+    });
+}
+
+function disconnect() {
+    if(stompClient != null) {
+        stompClient.disconnect();
+    }
+    //setConnected(false);
+    console.log("Disconnected");
+}
+
+function sendClickRequestSocket(x, y){
+    var body = {"x": parseInt(x), "y": parseInt(y), "id":UID};
+    stompClient.send("/request/click", {}, JSON.stringify(body));
+}
+
+function sendFlagRequestSocket(x, y){
+    var body = {"x": parseInt(x), "y": parseInt(y), "id":UID};
+    stompClient.send("/request/flag", {}, JSON.stringify(body));
+}
+
+
 /* ############################
  * API REQUESTS
  * ############################
  */
 
 function sendClick(x, y){
-  sendClickRequest(x, y);
+  //sendClickRequest(x, y);
+  sendClickRequestSocket(x, y);
 }
 
 function sendFlag(x, y){
-  sendFlagRequest(x, y);
+  //sendFlagRequest(x, y);
+    sendFlagRequestSocket(x, y);
 }
 
 var pendingRequests = {};
@@ -611,31 +705,102 @@ function sendFlagRequest(x, y){
     });
 }
 
+function sendLoginRequest(username, password){
+    var data = {
+        username: username,
+        password: password
+    };
+    $.ajax({
+        url: 'http://localhost:3000/data/login',
+        type: 'POST',
+        contentType: 'application/json',
+        dataType: 'json',
+        data: JSON.stringify(data),
+        success: function(response){
+            /* userdata found in database */
+            if(response.id){
+                setUserdataCookie(response.id);
+                UID = response.id;
+                subscribeToPersonalChannels();
+                closeLogin();
+                unblockScreen();
+            }
+            /* userdata not found */
+            else{
+                console.log("ERROR login data wrong");
+            }
+        }
+    });
+}
+
 /* ############################
  * SOUNDS
  * ############################
  */
 function playClickSound(){
-  $("#clickSound").trigger('play');
+    $("#clickSound").trigger('play');
 }
 function playFlagSound(){
-  $("#flagSound").trigger('play');
+    $("#flagSound").trigger('play');
 }
 function playUnFlagSound(){
-  $("#unflagSound").trigger('play');
+    $("#unflagSound").trigger('play');
 }
 function playBombSound(){
-  $("#bombSound").trigger('play');
+    $("#bombSound").trigger('play');
 }
 
 /* ############################
  * VISUALS
  * ############################
  */
+function blockScreenLogin(){
+    blockScreen("#90D7FF");
+    openLogin();
+}
+function blockScreenInvisible(){
+    blockScreen("#ffffff");
+}
+function blockScreen(color){
+    $('#screenBlocker').css('width', canvasWidth);
+    $('#screenBlocker').css('height', canvasHeight);
+    $('#screenBlocker').css('background-color', color);
+    $('#screenBlocker').css('display', 'block');
+}
+function unblockScreen(){
+    $('#screenBlocker').css('display', 'none');
+}
+function openLogin(){
+    $('#container-login').css('display', 'block');
+}
+function closeLogin(){
+    $('#container-login').css('display', 'none');
+}
+
+$('#login-button').click(function(){
+    var username = $('#username-input').val();
+    var password = $('#password-input').val();
+    sendLoginRequest(username, password);
+});
+
+$('#guest-button').click(function(){
+    sendLoginRequest("2bf9efa0", "");
+});
+
+function checkIfUserdataCookieIsSet(){
+    var userdata = getUserdataCookie();
+    if(userdata){
+        console.log("Userdata found: "+userdata);
+        UID = userdata;
+    }else{
+        console.log("Userdata not found!");
+        blockScreenLogin();
+    }
+}
 
  function clearCanvas(){
-   ctx.clearRect(0,0,canvasWidth,canvasHeight);
-   ctx.beginPath();
+    ctx.clearRect(0,0,canvasWidth,canvasHeight);
+    ctx.beginPath();
  }
 
 function drawGrid(){
@@ -812,12 +977,12 @@ function getScreenWidthInCells(){
 
 function getClusterForCoordinates(x, y){
   var facX = parseInt(x/100);
-  if(x < 0){
+  if(x < 0 && (x%100)!=0){
       facX -= 1;
   }
   var startX = 100*facX;
   var facY = parseInt(y/100);
-  if(y < 0){
+  if(y < 0 && (y%100)!=0){
       facY -= 1;
   }
   var startY = 100*facY;
@@ -862,5 +1027,10 @@ function getPositionCookie(){
   }else{
     return {x: 0, y:0};
   }
-
+}
+function setUserdataCookie(userdatakey){
+    setNeverExpireCookie("userdataCookie", userdatakey);
+}
+function getUserdataCookie(){
+    return getCookie("userdataCookie");
 }

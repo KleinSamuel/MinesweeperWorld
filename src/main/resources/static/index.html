@@ -5,8 +5,22 @@
     <title>Minesweeper</title>
     <link rel="stylesheet" href="./css/main.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="./js/sockjs.js"></script>
+    <script src="./js/stomp.js"></script>
   </head>
   <body>
+
+    <div id="screenBlocker"></div>
+
+    <div id="container-login">
+        <div id="login-headline">LOGIN</div>
+        <div id="username-headline" class="headline-style">Username:</div>
+        <input type="text" id="username-input" class="input-style">
+        <div id="password-headline" class="headline-style">Password:</div>
+        <input type="text" id="password-input" class="input-style">
+        <div id="login-button" class="button-style">LOGIN</div>
+        <div id="guest-button" class="button-style">Play as Guest</div>
+    </div>
 
     <canvas id="canvas" width="1920" height="1080"></canvas>
 

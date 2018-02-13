@@ -7,7 +7,7 @@ import org.bson.Document;
 import util.Utils;
 
 import javax.print.Doc;
-import java.util.Random;
+import java.util.*;
 
 public class ClusterFactory {
 
@@ -60,6 +60,11 @@ public class ClusterFactory {
         if(valueInDisplay == 0){
             int value = cells.getInteger(keyString);
 
+            /* if click on empty, open all adjacent empty cells */
+            if(value == 9) {
+                getAdjacentOfEmptyCell(cluster, x, y);
+            }
+
             /* set value of cell in display set */
             dbHandler.updateCellInDisplay(startX, startY, keyString, value);
 
@@ -67,6 +72,85 @@ public class ClusterFactory {
         }else{
             return -1;
         }
+    }
+
+    /**
+     * Get all adjacent cells of empty cell in original minesweeper fashion.
+     *
+     * @param cluster
+     * @param x
+     * @param y
+     */
+    public HashMap<String, Integer> getAdjacentOfEmptyCell(Document cluster, int x, int y){
+
+        HashMap<String, Document> cachedCluster = new HashMap<String, Document>();
+        String keyCluster = cluster.getInteger("startX")+"_"+cluster.getInteger("startY");
+        cachedCluster.put(keyCluster, cluster);
+
+        HashMap<String, Integer> toClick = new HashMap<String, Integer>();
+        ArrayList<String> openList = new ArrayList<String>();
+
+        toClick.put(Utils.getKeyString(x, y), 9);
+        openList.add(Utils.getKeyString(x, y));
+
+        while(!openList.isEmpty()){
+
+            String currentKey = openList.get(0);
+            Pair<Integer, Integer> currentCoords = Utils.decodeKeyString(currentKey);
+
+            /* get left cell */
+            lookAtAdjacentEmpty(currentCoords.getKey()-1, currentCoords.getValue(), cachedCluster, toClick, openList);
+            /* get right cell */
+            lookAtAdjacentEmpty(currentCoords.getKey()+1, currentCoords.getValue(), cachedCluster, toClick, openList);
+            /* get up cell */
+            lookAtAdjacentEmpty(currentCoords.getKey(), currentCoords.getValue()-1, cachedCluster, toClick, openList);
+            /* get down cell */
+            lookAtAdjacentEmpty(currentCoords.getKey(), currentCoords.getValue()+1, cachedCluster, toClick, openList);
+            /* get left up cell */
+            lookAtAdjacentEmpty(currentCoords.getKey()-1, currentCoords.getValue()-1, cachedCluster, toClick, openList);
+            /* get right up cell */
+            lookAtAdjacentEmpty(currentCoords.getKey()+1, currentCoords.getValue()-1, cachedCluster, toClick, openList);
+            /* get left down cell */
+            lookAtAdjacentEmpty(currentCoords.getKey()-1, currentCoords.getValue()+1, cachedCluster, toClick, openList);
+            /* get right down cell */
+            lookAtAdjacentEmpty(currentCoords.getKey()+1, currentCoords.getValue()+1, cachedCluster, toClick, openList);
+
+            openList.remove(0);
+        }
+
+        return toClick;
+    }
+
+    private void lookAtAdjacentEmpty(int x, int y, HashMap<String, Document> cachedCluster, HashMap<String, Integer> toClick, ArrayList<String> openList){
+
+        /* key string for current cell */
+        String currentKeyString = Utils.getKeyString(x, y);
+        /* startX and startY for needed cluster */
+        Pair<Integer, Integer> neededClusterIdent = Utils.getClusterForCoordinates(x, y);
+        /* key string for needed cluster */
+        String neededKeyString = Utils.getKeyString(neededClusterIdent.getKey(), neededClusterIdent.getValue());
+        /* cluster containing the given cell */
+        Document neededCluster;
+        /* value of the given cell */
+        int currentValue;
+
+        /* check if needed cluster is already cached, if not retrieve it from database and cache it */
+        if(cachedCluster.containsKey(neededKeyString)){
+            neededCluster = cachedCluster.get(neededKeyString);
+        }else{
+            neededCluster = dbHandler.getCluster(neededClusterIdent.getKey(), neededClusterIdent.getValue());
+            cachedCluster.put(neededKeyString, neededCluster);
+        }
+
+        /* get value for cell */
+        currentValue = ((Document)neededCluster.get("cells")).getInteger(currentKeyString);
+
+        /* if cell is also empty and not already in visited list, add to to do list */
+        if(currentValue == 9 && !toClick.containsKey(currentKeyString)){
+            openList.add(currentKeyString);
+        }
+        toClick.put(currentKeyString, currentValue);
+        dbHandler.updateCellInDisplay(neededClusterIdent.getKey(), neededClusterIdent.getValue(), currentKeyString, currentValue);
     }
 
     /**

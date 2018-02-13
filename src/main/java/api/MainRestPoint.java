@@ -27,11 +27,6 @@ public class MainRestPoint {
     @RequestMapping(value = "/requestCluster", method = RequestMethod.POST)
     @ResponseBody
     public String requestCluster(@RequestBody Map<String, Object> body){
-
-        System.out.println("Body in Request Cluster");
-        System.out.println(body.get("startX"));
-        System.out.println(body.get("startY"));
-
         int startX = (Integer)body.get("startX");
         int startY = (Integer)body.get("startY");
         Document doc = clusterFactory.getCluster(startX, startY);

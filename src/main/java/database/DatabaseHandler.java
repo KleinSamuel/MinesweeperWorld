@@ -8,6 +8,7 @@ import com.mongodb.client.MongoDatabase;
 import model.ClusterFactory;
 import org.bson.Document;
 import org.springframework.stereotype.Component;
+import util.Utils;
 
 import javax.print.Doc;
 
@@ -17,12 +18,14 @@ public class DatabaseHandler {
     MongoClient client;
     MongoDatabase minesweeperDatabase;
     MongoCollection<Document> collection;
+    MongoCollection<Document> userdata;
 
     public DatabaseHandler(){
         MongoClientURI connectionString = new MongoClientURI("mongodb://localhost:27017");
         this.client = new MongoClient(connectionString);
         this.minesweeperDatabase = client.getDatabase("minesweeperworld");
         collection = minesweeperDatabase.getCollection("data");
+        userdata = minesweeperDatabase.getCollection("userdata");
     }
 
     public Document getCluster(int startX, int startY){
@@ -86,10 +89,21 @@ public class DatabaseHandler {
         collection.updateOne(query, newDoc);
     }
 
-    public static void main(String[] args){
-        DatabaseHandler handler = new DatabaseHandler();
-        Document doc = handler.getCluster(0,0);
-        System.out.println(doc);
+    public Document getUserdata(String username, String password){
+        BasicDBObject query = new BasicDBObject();
+        query.append("username", username);
+        query.append("password", password);
+        return userdata.find(query).first();
+    }
+
+    public String saveUserdata(String username, String password){
+        Document toInsert = new Document();
+        toInsert.append("username", username);
+        toInsert.append("password", password);
+        String uid = Utils.getUniqueID();
+        toInsert.append("id", uid);
+        userdata.insertOne(toInsert);
+        return uid;
     }
 
 }

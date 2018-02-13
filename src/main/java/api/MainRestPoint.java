@@ -1,12 +1,13 @@
 package api;
 
-import database.DatabaseHandler;
 import model.ClusterFactory;
 import org.bson.Document;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.web.bind.annotation.*;
+import util.Utils;
 
 import javax.annotation.PostConstruct;
 import java.util.Map;
@@ -19,9 +20,13 @@ public class MainRestPoint {
 
     private ClusterFactory clusterFactory;
 
+    @Autowired
+    private SocketHandler socketHandler;
+
     @PostConstruct
     public void init(){
         clusterFactory = new ClusterFactory();
+        socketHandler.setClusterFactory(clusterFactory);
     }
 
     @RequestMapping(value = "/requestCluster", method = RequestMethod.POST)
@@ -33,13 +38,38 @@ public class MainRestPoint {
         return doc.toJson();
     }
 
-    @RequestMapping(value = "/setClick", method = RequestMethod.POST)
+    @RequestMapping(value = "/login", method = RequestMethod.POST)
+    @ResponseBody
+    public String loginUser(@RequestBody Map<String, Object> body){
+
+        String username = String.valueOf(body.get("username"));
+        String password = String.valueOf(body.get("password"));
+        Document response = new Document();
+        String uid;
+
+        if(username.equals("2bf9efa0")){
+            uid = Utils.getUniqueID();
+            response.append("id", uid);
+        }else{
+            Document userdata = clusterFactory.dbHandler.getUserdata(username, password);
+            if(userdata == null){
+                response.append("id", null);
+            }else{
+                response.append("id", userdata.getString("id"));
+            }
+        }
+        return response.toJson();
+    }
+
+    /*@RequestMapping(value = "/setClick", method = RequestMethod.POST)
     @ResponseBody
     public int setClick(@RequestBody Map<String, Object> body){
         int x = (Integer)body.get("x");
         int y = (Integer)body.get("y");
-        int value = clusterFactory.setClick(x, y);
-        return value;
+
+        HashMap<String, Integer> toClick = clusterFactory.setClick(x, y);
+
+        return 1;
     }
 
     @RequestMapping(value = "/setFlag", method = RequestMethod.POST)
@@ -49,7 +79,7 @@ public class MainRestPoint {
         int y = (Integer)body.get("y");
         int flagPossible = clusterFactory.setFlag(x, y);
         return flagPossible;
-    }
+    }*/
 
     public static void main(String[] args) throws Exception {
         SpringApplication.run(MainRestPoint.class, args);

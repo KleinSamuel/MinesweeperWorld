@@ -137,11 +137,25 @@ public class DatabaseHandler {
         query.append("id", id);
         userdata.updateOne(query, newDoc);
     }
+    public void updatePosition(String id, int x, int y){
+        BasicDBObject updatedPos = new BasicDBObject();
+        updatedPos.append("position", Utils.getKeyString(x, y));
+        BasicDBObject newDoc = new BasicDBObject();
+        newDoc.append("$set", updatedPos);
+        BasicDBObject query = new BasicDBObject();
+        query.append("id", id);
+        userdata.updateOne(query, newDoc);
+    }
 
-    public String saveUserdata(String username, String password){
+    public String createNewUserdata(String username, String password){
         Document toInsert = new Document();
         toInsert.append("username", username);
         toInsert.append("password", password);
+        toInsert.append("cellsCleared", 0);
+        toInsert.append("bombsDefused", 0);
+        toInsert.append("bombsActivated", 0);
+        toInsert.append("score", 0);
+        toInsert.append("position", "0_0");
         String uid = Utils.getUniqueID();
         toInsert.append("id", uid);
         userdata.insertOne(toInsert);

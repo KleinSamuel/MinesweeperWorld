@@ -50,9 +50,23 @@ public class SocketHandler extends AbstractWebSocketMessageBrokerConfigurer{
         if(toClick == null){
             return;
         }
+        /* check if click on bomb */
+        if(toClick.size() == 1){
+            for(Map.Entry<String, Integer> entry : toClick.entrySet()){
+                if(entry.getValue() == 11){
+                    Pair<Integer, Integer> coords = Utils.decodeKeyString(entry.getKey());
+                    sendClickResponse(coords.getKey(), coords.getValue(), entry.getValue());
+                    sendPrivateBombActivatedResponse(clickRequestBody.getId(), clickRequestBody.getX(), clickRequestBody.getY());
+                    return;
+                }
+                break;
+            }
+        }
+
         for(Map.Entry<String, Integer> entry : toClick.entrySet()){
             Pair<Integer, Integer> coords = Utils.decodeKeyString(entry.getKey());
             sendClickResponse(coords.getKey(), coords.getValue(), entry.getValue());
+            sendPrivateCellClearedResponse(clickRequestBody.getId(), clickRequestBody.getX(), clickRequestBody.getY());
         }
     }
 
@@ -69,6 +83,21 @@ public class SocketHandler extends AbstractWebSocketMessageBrokerConfigurer{
         messagingTemplate.convertAndSend("/notifications/"+id+"/message", doc);
     }
 
+    public void sendPrivateCellClearedResponse(String id, int x, int y){
+        clusterFactory.dbHandler.updateCellsCleared(id, 1);
+        messagingTemplate.convertAndSend("/notifications/"+id+"/cellCleared", new FlagResponseBody(x, y));
+    }
+
+    public void sendPrivateBombActivatedResponse(String id, int x, int y){
+        clusterFactory.dbHandler.updateBombsActivated(id, 1);
+        messagingTemplate.convertAndSend("/notifications/"+id+"/bombActivated", new FlagResponseBody(x, y));
+    }
+
+    public void sendPrivateFlagResponse(String id, int x, int y){
+        clusterFactory.dbHandler.updateBombsDefused(id, 1);
+        messagingTemplate.convertAndSend("/notifications/"+id+"/flagSet", new FlagResponseBody(x, y));
+    }
+
     public void sendFlagFailedResponse(String id, int x, int y){
         messagingTemplate.convertAndSend("/notifications/"+id+"/failedFlag", new FlagResponseBody(x, y));
     }
@@ -78,6 +107,7 @@ public class SocketHandler extends AbstractWebSocketMessageBrokerConfigurer{
         int flagStatus = clusterFactory.setFlag(flagRequestBody.getX(), flagRequestBody.getY());
         if(flagStatus == 1){
             sendFlagResponse(flagRequestBody.getX(), flagRequestBody.getY());
+            sendPrivateFlagResponse(flagRequestBody.getId(), flagRequestBody.getX(), flagRequestBody.getY());
         }else if(flagStatus == -1){
             sendFlagFailedResponse(flagRequestBody.getId(), flagRequestBody.getX(), flagRequestBody.getY());
         }

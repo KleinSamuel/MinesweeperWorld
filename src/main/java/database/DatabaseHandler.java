@@ -95,6 +95,48 @@ public class DatabaseHandler {
         query.append("password", password);
         return userdata.find(query).first();
     }
+    public Document getUserdata(String id){
+        BasicDBObject query = new BasicDBObject();
+        query.append("id", id);
+        return userdata.find(query).first();
+    }
+
+    public void updateCellsCleared(String id, int toAdd){
+        BasicDBObject updatedCellsCleared = new BasicDBObject();
+        updatedCellsCleared.append("cellsCleared", toAdd);
+        BasicDBObject newDoc = new BasicDBObject();
+        newDoc.append("$inc", updatedCellsCleared);
+        BasicDBObject query = new BasicDBObject();
+        query.append("id", id);
+        userdata.updateOne(query, newDoc);
+    }
+    public void updateBombsDefused(String id, int toAdd){
+        BasicDBObject updatedBombsDefused = new BasicDBObject();
+        updatedBombsDefused.append("bombsDefused", toAdd);
+        BasicDBObject newDoc = new BasicDBObject();
+        newDoc.append("$inc", updatedBombsDefused);
+        BasicDBObject query = new BasicDBObject();
+        query.append("id", id);
+        userdata.updateOne(query, newDoc);
+    }
+    public void updateBombsActivated(String id, int toAdd){
+        BasicDBObject updatedBombsActivated = new BasicDBObject();
+        updatedBombsActivated.append("bombsActivated", toAdd);
+        BasicDBObject newDoc = new BasicDBObject();
+        newDoc.append("$inc", updatedBombsActivated);
+        BasicDBObject query = new BasicDBObject();
+        query.append("id", id);
+        userdata.updateOne(query, newDoc);
+    }
+    public void updateScore(String id, int toAdd){
+        BasicDBObject updatedScore = new BasicDBObject();
+        updatedScore.append("score", toAdd);
+        BasicDBObject newDoc = new BasicDBObject();
+        newDoc.append("$inc", updatedScore);
+        BasicDBObject query = new BasicDBObject();
+        query.append("id", id);
+        userdata.updateOne(query, newDoc);
+    }
 
     public String saveUserdata(String username, String password){
         Document toInsert = new Document();

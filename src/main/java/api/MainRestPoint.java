@@ -56,8 +56,31 @@ public class MainRestPoint {
                 response.append("id", null);
             }else{
                 response.append("id", userdata.getString("id"));
+                response.append("username", userdata.getString("username"));
+                response.append("cellsCleared", userdata.getDouble("cellsCleared").intValue());
+                response.append("bombsDefused", userdata.getDouble("bombsDefused").intValue());
+                response.append("bombsActivated", userdata.getDouble("bombsActivated").intValue());
+                response.append("score", userdata.getDouble("score").intValue());
             }
         }
+        return response.toJson();
+    }
+
+    @RequestMapping(value = "/getStats", method = RequestMethod.POST)
+    @ResponseBody
+    public String getStats(@RequestBody Map<String, Object> body){
+
+        String uid = String.valueOf(body.get("id"));
+        Document response = new Document();
+
+        Document userdata = clusterFactory.dbHandler.getUserdata(uid);
+        response.append("id", userdata.getString("id"));
+        response.append("username", userdata.getString("username"));
+        response.append("cellsCleared", userdata.getDouble("cellsCleared").intValue());
+        response.append("bombsDefused", userdata.getDouble("bombsDefused").intValue());
+        response.append("bombsActivated", userdata.getDouble("bombsActivated").intValue());
+        response.append("score", userdata.getDouble("score").intValue());
+
         return response.toJson();
     }
 

@@ -12,6 +12,8 @@
 
     <div id="screenBlocker"></div>
 
+    <div id="connection-toast" class="toast"></div>
+
     <div id="container-login">
         <div id="login-headline">LOGIN</div>
         <div id="username-headline" class="headline-style">Username:</div>
@@ -20,6 +22,31 @@
         <input type="text" id="password-input" class="input-style">
         <div id="login-button" class="button-style">LOGIN</div>
         <div id="guest-button" class="button-style">Play as Guest</div>
+    </div>
+
+    <div id="navbar">
+        <div id="navbar-headline">MINESWEEPER WORLD</div>
+        <div id="navbar-logout">Logout</div>
+        <div id="navbar-score-container" class="navbar-item">
+            <div id="navbar-score-header" class="navbar-item-header">Score:</div>
+            <div id="navbar-score" class="navbar-item-content">0</div>
+        </div>
+        <div id="navbar-bombactivated-container" class="navbar-item">
+            <div id="navbar-bombactivated-header" class="navbar-item-header">Bombs activated:</div>
+            <div id="navbar-bombactivated" class="navbar-item-content">0</div>
+        </div>
+        <div id="navbar-bombdefused-container" class="navbar-item">
+            <div id="navbar-bombdefused-header" class="navbar-item-header">Bombs defused:</div>
+            <div id="navbar-bombdefused" class="navbar-item-content">0</div>
+        </div>
+        <div id="navbar-clearcells-container" class="navbar-item">
+            <div id="navbar-clearcells-header" class="navbar-item-header">Cleared cells:</div>
+            <div id="navbar-clearcells" class="navbar-item-content">0</div>
+        </div>
+        <div id="navbar-username-container" class="navbar-item">
+            <div id="navbar-username-header" class="navbar-item-header">Username:</div>
+            <div id="navbar-username" class="navbar-item-content">Surditas</div>
+        </div>
     </div>
 
     <canvas id="canvas" width="1920" height="1080"></canvas>

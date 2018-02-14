@@ -11,6 +11,7 @@ $(document).ready(function(){
 });
 $(window).resize(function() {
   initCanvas();
+  resizeBlockScreen();
 });
 
 var canvas = document.getElementById('canvas');
@@ -25,7 +26,7 @@ var position = {};
 
 function initCanvas(){
   canvas.width = document.documentElement.clientWidth;
-  canvas.height = document.documentElement.clientHeight;
+  canvas.height = document.documentElement.clientHeight-65;
   canvasOffset = $('#canvas').offset();
   offsetX = canvasOffset.left;
   offsetY = canvasOffset.top;
@@ -50,6 +51,13 @@ var clusterRequestBuffer = 10;
 
 var stompClient = null;
 var UID;
+
+/* statistics */
+var userNameMain = "";
+var cellsCleared = 0;
+var bombsDefused = 0;
+var bombsActivated = 0;
+var score = 0;
 
 var leftBound;
 var rightBound;
@@ -182,6 +190,11 @@ function update(){
     return;
   }
   checkIfOutOfBounds();
+
+  updateNavbarCellsCleared();
+  updateNavbarBombsDefused();
+  updateNavbarBombsActivated();
+  updateNavbarScore()
 }
 
 function draw(){
@@ -213,6 +226,18 @@ function initAll(){
   requestAnimationFrame(mainLoop);
 }
 
+function checkIfUserdataCookieIsSet(){
+    var userdata = getUserdataCookie();
+    if(userdata){
+        console.log("Userdata found: "+userdata);
+        UID = userdata;
+        retrieveStats(UID);
+    }else{
+        console.log("Userdata not found!");
+        blockScreenLogin();
+    }
+}
+
 /* ############################
  * GAME LOGIC
  * ############################
@@ -222,23 +247,6 @@ function initAll(){
  * 10 = flag
  * 11 = bomb
  */
-
-function createDummyCluster(startX, startY){
-  var data = {};
-  data.startX = startX;
-  data.startY = startY;
-  data.endX = startX+99;
-  data.endY = startY+99;
-
-  /* create dummy data */
-  for (var i = data.startX; i <= data.endX; i++) {
-    for (var j = data.startY; j <= data.endY; j++) {
-      var keyString = getKeyString(i,j);
-      data[keyString] = 0;
-    }
-  }
-  return data;
-}
 
 function initCluster(pixelX, pixelY){
 
@@ -502,7 +510,7 @@ function connect() {
     var socket = new SockJS('/minesweeperworld');
     stompClient = Stomp.over(socket);
 
-    stompClient.debug = null
+    stompClient.debug = null;
 
     stompClient.connect({}, function(frame) {
 
@@ -513,7 +521,6 @@ function connect() {
             var clickResponseObj = JSON.parse(clickResponse.body);
             setCellInDisplay(clickResponseObj.x, clickResponseObj.y, clickResponseObj.value);
         });
-
         /* channel for flags to be set */
         stompClient.subscribe('/notifications/flagResponse', function(flagResponse){
             var flagResponseObj = JSON.parse(flagResponse.body);
@@ -522,6 +529,10 @@ function connect() {
 
         if(UID){
             subscribeToPersonalChannels();
+        }
+    }, function(disconnect){
+        if(disconnect.startsWith("Whoops! Lost connection")){
+            showConnectionToast("LOST CONNECTION TO SERVER..");
         }
     });
 }
@@ -532,15 +543,25 @@ function subscribeToPersonalChannels(){
        var responseObj = JSON.parse(response.body);
        console.log("Got personal message: "+responseObj);
     });
+    /* channel for flag set */
+    stompClient.subscribe('/notifications/'+UID+"/flagSet", function(response){
+        var responseObj = JSON.parse(response.body);
+        bombsDefused += 1;
+    });
     /* channel for failed flag */
     stompClient.subscribe('/notifications/'+UID+"/failedFlag", function(response){
         var responseObj = JSON.parse(response.body);
         console.log("Got personal failed flag: "+responseObj);
     });
     /* channel for bomb */
-    stompClient.subscribe('/notifications/'+UID+"/bomb", function(response){
+    stompClient.subscribe('/notifications/'+UID+"/bombActivated", function(response){
         var responseObj = JSON.parse(response.body);
-        console.log("Got personal bomb: "+responseObj);
+        bombsActivated += 1;
+    });
+    /* channel for cleared cell */
+    stompClient.subscribe('/notifications/'+UID+"/cellCleared", function(response){
+        var responseObj = JSON.parse(response.body);
+        cellsCleared += 1;
     });
 }
 
@@ -569,12 +590,11 @@ function sendFlagRequestSocket(x, y){
  */
 
 function sendClick(x, y){
-  //sendClickRequest(x, y);
-  sendClickRequestSocket(x, y);
+    sendClickRequestSocket(x, y);
+    popPoints();
 }
 
 function sendFlag(x, y){
-  //sendFlagRequest(x, y);
     sendFlagRequestSocket(x, y);
 }
 
@@ -655,56 +675,6 @@ function getInitCluster(startX, startY, key){
   });
 }
 
-function sendClickRequest(x, y){
-  var data = {
-    x: x,
-    y: y
-  };
-  $.ajax({
-      url: 'http://localhost:3000/data/setClick',
-      type: 'POST',
-      contentType: 'application/json',
-      dataType: 'json',
-      data: JSON.stringify(data),
-      success: function(response){
-        /* if cell was clickable */
-        if(response != -1){
-            setValueInCluster(x, y, response);
-            if(response == 11){
-              playBombSound();
-            }else{
-              playClickSound();
-            }
-        }
-      }
-  });
-}
-
-function sendFlagRequest(x, y){
-    var data = {
-        x: x,
-        y: y
-    };
-    $.ajax({
-        url: 'http://localhost:3000/data/setFlag',
-        type: 'POST',
-        contentType: 'application/json',
-        dataType: 'json',
-        data: JSON.stringify(data),
-        success: function(response){
-          if(response == 1){
-            setValueInCluster(x, y, 10);
-            playFlagSound();
-          }else if(response == 0){
-            setValueInCluster(x, y, 0);
-            playUnFlagSound();
-          }else{
-            console.log('NO FLAG POSSIBLE HERE!');
-          }
-        }
-    });
-}
-
 function sendLoginRequest(username, password){
     var data = {
         username: username,
@@ -721,6 +691,14 @@ function sendLoginRequest(username, password){
             if(response.id){
                 setUserdataCookie(response.id);
                 UID = response.id;
+
+                userNameMain = response.username;
+                cellsCleared = response.cellsCleared;
+                bombsDefused = response.bombsDefused;
+                bombsActivated = response.bombsActivated;
+                score = response.score;
+
+                updateNavbarName();
                 subscribeToPersonalChannels();
                 closeLogin();
                 unblockScreen();
@@ -733,20 +711,47 @@ function sendLoginRequest(username, password){
     });
 }
 
+function retrieveStats(id){
+    var data = {
+        id: id
+    };
+    $.ajax({
+        url: 'http://localhost:3000/data/getStats',
+        type: 'POST',
+        contentType: 'application/json',
+        dataType: 'json',
+        data: JSON.stringify(data),
+        success: function (response) {
+            if(response.id){
+                userNameMain = response.username;
+                cellsCleared = response.cellsCleared;
+                bombsDefused = response.bombsDefused;
+                bombsActivated = response.bombsActivated;
+                score = response.score;
+                updateNavbarName();
+            }
+        }
+    });
+}
+
 /* ############################
  * SOUNDS
  * ############################
  */
 function playClickSound(){
+    $("#clickSound").trigger('stop');
     $("#clickSound").trigger('play');
 }
 function playFlagSound(){
+    $("#flagSound").trigger('stop');
     $("#flagSound").trigger('play');
 }
 function playUnFlagSound(){
+    $("#unflagSound").trigger('stop');
     $("#unflagSound").trigger('play');
 }
 function playBombSound(){
+    $("#bombSound").trigger('stop');
     $("#bombSound").trigger('play');
 }
 
@@ -761,9 +766,12 @@ function blockScreenLogin(){
 function blockScreenInvisible(){
     blockScreen("#ffffff");
 }
-function blockScreen(color){
+function resizeBlockScreen(){
     $('#screenBlocker').css('width', canvasWidth);
     $('#screenBlocker').css('height', canvasHeight);
+}
+function blockScreen(color){
+    resizeBlockScreen();
     $('#screenBlocker').css('background-color', color);
     $('#screenBlocker').css('display', 'block');
 }
@@ -787,21 +795,37 @@ $('#guest-button').click(function(){
     sendLoginRequest("2bf9efa0", "");
 });
 
-function checkIfUserdataCookieIsSet(){
-    var userdata = getUserdataCookie();
-    if(userdata){
-        console.log("Userdata found: "+userdata);
-        UID = userdata;
-    }else{
-        console.log("Userdata not found!");
-        blockScreenLogin();
-    }
+function showConnectionToast(message){
+    blockScreenInvisible();
+    $('#connection-toast').css('display', 'block');
+    $('#connection-toast').text(message);
 }
 
- function clearCanvas(){
+function updateNavbarName(){
+    $('#navbar-username').text(userNameMain);
+}
+function updateNavbarCellsCleared(){
+    $('#navbar-clearcells').text(cellsCleared);
+}
+function updateNavbarBombsDefused(){
+    $('#navbar-bombdefused').text(bombsDefused);
+}
+function updateNavbarBombsActivated(){
+    $('#navbar-bombactivated').text(bombsActivated);
+}
+function updateNavbarScore(){
+    $('#navbar-score').text(score);
+}
+
+function clearCanvas(){
     ctx.clearRect(0,0,canvasWidth,canvasHeight);
     ctx.beginPath();
- }
+}
+
+function popPoints(){
+    //ctx.fillText("+100", 200, 200);
+    console.log("POP");
+}
 
 function drawGrid(){
 
@@ -873,62 +897,62 @@ function drawCell(x, y, value){
 
 function drawFieldUnknown(x, y){
  var img = new Image();
- img.src = './assets/cell_unknown.png';
+ img.src = './assets/tileset_2/cell_unknown.png';
  ctx.drawImage(img, x, y, cellSize, cellSize);
 }
 function drawFieldEmpty(x, y){
  var img = new Image();
- img.src = './assets/cell_empty.png';
+ img.src = './assets/tileset_2/cell_empty.png';
  ctx.drawImage(img, x, y, cellSize, cellSize);
 }
 function drawFieldFlag(x, y){
  var img = new Image();
- img.src = './assets/cell_flag.png';
+ img.src = './assets/tileset_2/cell_flag.png';
  ctx.drawImage(img, x, y, cellSize, cellSize);
 }
 function drawFieldBomb(x, y){
  var img = new Image();
- img.src = './assets/cell_bomb.png';
+ img.src = './assets/tileset_2/cell_bomb.png';
  ctx.drawImage(img, x, y, cellSize, cellSize);
 }
 function drawField1(x, y){
  var img = new Image();
- img.src = './assets/cell_1.png';
+ img.src = './assets/tileset_2/cell_1.png';
  ctx.drawImage(img, x, y, cellSize, cellSize);
 }
 function drawField2(x, y){
  var img = new Image();
- img.src = './assets/cell_2.png';
+ img.src = './assets/tileset_2/cell_2.png';
  ctx.drawImage(img, x, y, cellSize, cellSize);
 }
 function drawField3(x, y){
  var img = new Image();
- img.src = './assets/cell_3.png';
+ img.src = './assets/tileset_2/cell_3.png';
  ctx.drawImage(img, x, y, cellSize, cellSize);
 }
 function drawField4(x, y){
  var img = new Image();
- img.src = './assets/cell_4.png';
+ img.src = './assets/tileset_2/cell_4.png';
  ctx.drawImage(img, x, y, cellSize, cellSize);
 }
 function drawField5(x, y){
  var img = new Image();
- img.src = './assets/cell_5.png';
+ img.src = './assets/tileset_2/cell_5.png';
  ctx.drawImage(img, x, y, cellSize, cellSize);
 }
 function drawField6(x, y){
  var img = new Image();
- img.src = './assets/cell_6.png';
+ img.src = './assets/tileset_2/cell_6.png';
  ctx.drawImage(img, x, y, cellSize, cellSize);
 }
 function drawField7(x, y){
  var img = new Image();
- img.src = './assets/cell_7.png';
+ img.src = './assets/tileset_2/cell_7.png';
  ctx.drawImage(img, x, y, cellSize, cellSize);
 }
 function drawField8(x, y){
  var img = new Image();
- img.src = './assets/cell_8.png';
+ img.src = './assets/tileset_2/cell_8.png';
  ctx.drawImage(img, x, y, cellSize, cellSize);
 }
 

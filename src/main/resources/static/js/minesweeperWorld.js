@@ -128,6 +128,7 @@ function handleMouseMove(e){
     position.yRight = cordsRight.y;
 
     setPositionCookie(posX, posY);
+    sendPositionUpdate();
   }
 }
 var left = 0;
@@ -219,9 +220,6 @@ function initAll(){
 
   checkIfUserdataCookieIsSet();
 
-  /* get position and fetch respective cluster */
-  var oldPosition = getPositionCookie();
-  initCluster(oldPosition.x, oldPosition.y);
   /* start animation */
   requestAnimationFrame(mainLoop);
 }
@@ -232,6 +230,8 @@ function checkIfUserdataCookieIsSet(){
         console.log("Userdata found: "+userdata);
         UID = userdata;
         retrieveStats(UID);
+        var oldPosition = getPositionCookie();
+        initCluster(oldPosition.x, oldPosition.y);
     }else{
         console.log("Userdata not found!");
         blockScreenLogin();
@@ -583,6 +583,11 @@ function sendFlagRequestSocket(x, y){
     stompClient.send("/request/flag", {}, JSON.stringify(body));
 }
 
+function sendPositionUpdate(){
+    var body = {"x": parseInt(posX), "y": parseInt(posY)};
+    stompClient.send("/request/positionUpdate", {}, JSON.stringify(body));
+}
+
 
 /* ############################
  * API REQUESTS
@@ -615,7 +620,6 @@ function getCluster(startX, startY, key){
         startX: startX,
         startY: startY
     };
-
   $.ajax({
     url: 'http://localhost:3000/data/requestCluster',
     type: 'POST',
@@ -689,6 +693,7 @@ function sendLoginRequest(username, password){
         success: function(response){
             /* userdata found in database */
             if(response.id){
+
                 setUserdataCookie(response.id);
                 UID = response.id;
 
@@ -697,6 +702,10 @@ function sendLoginRequest(username, password){
                 bombsDefused = response.bombsDefused;
                 bombsActivated = response.bombsActivated;
                 score = response.score;
+                var positionTmp = decodeKeyString(response.position);
+
+                initCluster(positionTmp.x, positionTmp.y);
+                setPositionCookie(positionTmp.x, positionTmp.y);
 
                 updateNavbarName();
                 subscribeToPersonalChannels();
@@ -722,13 +731,18 @@ function retrieveStats(id){
         dataType: 'json',
         data: JSON.stringify(data),
         success: function (response) {
-            if(response.id){
+            console.log(response);
+            if(response){
                 userNameMain = response.username;
                 cellsCleared = response.cellsCleared;
                 bombsDefused = response.bombsDefused;
                 bombsActivated = response.bombsActivated;
                 score = response.score;
                 updateNavbarName();
+            }else{
+                userNameMain = 'Guest';
+                updateNavbarName();
+                console.log("Init as guest");
             }
         }
     });
@@ -767,8 +781,8 @@ function blockScreenInvisible(){
     blockScreen("#ffffff");
 }
 function resizeBlockScreen(){
-    $('#screenBlocker').css('width', canvasWidth);
-    $('#screenBlocker').css('height', canvasHeight);
+    $('#screenBlocker').css('width', $(window).width);
+    $('#screenBlocker').css('height', $(window).height);
 }
 function blockScreen(color){
     resizeBlockScreen();
@@ -788,11 +802,26 @@ function closeLogin(){
 $('#login-button').click(function(){
     var username = $('#username-input').val();
     var password = $('#password-input').val();
+    $('#username-input').val('');
+    $('#password-input').val('');
     sendLoginRequest(username, password);
 });
 
 $('#guest-button').click(function(){
     sendLoginRequest("2bf9efa0", "");
+});
+
+$('#navbar-logout').click(function(){
+    console.log("LOGOUT current user.");
+    deleteCookie("positionCookie");
+    deleteCookie("userdataCookie");
+    userNameMain = "";
+    updateNavbarName();
+    cellsCleared = 0;
+    bombsDefused = 0;
+    bombsActivated = 0;
+    score = 0;
+    blockScreenLogin();
 });
 
 function showConnectionToast(message){
@@ -1019,6 +1048,10 @@ function setCookie(cname, cvalue, exdays) {
     d.setTime(d.getTime() + (exdays*24*60*60*1000));
     var expires = "expires="+ d.toUTCString();
     document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+}
+/* delete a cookie by setting expiring date to past */
+function deleteCookie(cname) {
+    document.cookie = cname + '=; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
 }
 /* set a cookie that expires 2030 */
 function setNeverExpireCookie(cname, cvalue){

@@ -50,6 +50,12 @@ public class MainRestPoint {
         if(username.equals("2bf9efa0")){
             uid = Utils.getUniqueID();
             response.append("id", uid);
+            response.append("username", "Guest");
+            response.append("cellsCleared", 0);
+            response.append("bombsDefused", 0);
+            response.append("bombsActivated", 0);
+            response.append("score", 0);
+            response.append("position", "0_0");
         }else{
             Document userdata = clusterFactory.dbHandler.getUserdata(username, password);
             if(userdata == null){
@@ -61,6 +67,7 @@ public class MainRestPoint {
                 response.append("bombsDefused", userdata.getDouble("bombsDefused").intValue());
                 response.append("bombsActivated", userdata.getDouble("bombsActivated").intValue());
                 response.append("score", userdata.getDouble("score").intValue());
+                response.append("position", userdata.getString("position"));
             }
         }
         return response.toJson();
@@ -74,35 +81,20 @@ public class MainRestPoint {
         Document response = new Document();
 
         Document userdata = clusterFactory.dbHandler.getUserdata(uid);
+
+        if(userdata == null){
+            return null;
+        }
         response.append("id", userdata.getString("id"));
         response.append("username", userdata.getString("username"));
         response.append("cellsCleared", userdata.getDouble("cellsCleared").intValue());
         response.append("bombsDefused", userdata.getDouble("bombsDefused").intValue());
         response.append("bombsActivated", userdata.getDouble("bombsActivated").intValue());
         response.append("score", userdata.getDouble("score").intValue());
+        response.append("position", userdata.getString("position"));
 
         return response.toJson();
     }
-
-    /*@RequestMapping(value = "/setClick", method = RequestMethod.POST)
-    @ResponseBody
-    public int setClick(@RequestBody Map<String, Object> body){
-        int x = (Integer)body.get("x");
-        int y = (Integer)body.get("y");
-
-        HashMap<String, Integer> toClick = clusterFactory.setClick(x, y);
-
-        return 1;
-    }
-
-    @RequestMapping(value = "/setFlag", method = RequestMethod.POST)
-    @ResponseBody
-    public int setFlag(@RequestBody Map<String, Object> body){
-        int x = (Integer)body.get("x");
-        int y = (Integer)body.get("y");
-        int flagPossible = clusterFactory.setFlag(x, y);
-        return flagPossible;
-    }*/
 
     public static void main(String[] args) throws Exception {
         SpringApplication.run(MainRestPoint.class, args);

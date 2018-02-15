@@ -5,12 +5,9 @@ import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import model.ClusterFactory;
 import org.bson.Document;
 import org.springframework.stereotype.Component;
 import util.Utils;
-
-import javax.print.Doc;
 
 @Component
 public class DatabaseHandler {

@@ -1,7 +1,7 @@
 package api;
 
 import api.schemas.*;
-import javafx.util.Pair;
+import util.Pair;
 import model.ClusterFactory;
 import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;

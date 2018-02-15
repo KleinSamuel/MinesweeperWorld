@@ -1,9 +1,9 @@
 package model;
 
 import database.DatabaseHandler;
-import javafx.util.Pair;
 import org.bson.Document;
 import org.springframework.stereotype.Component;
+import util.Pair;
 import util.Utils;
 
 import java.util.*;

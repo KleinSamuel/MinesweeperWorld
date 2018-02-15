@@ -80,3 +80,60 @@ body {
   font-size: 20px;
   padding-left: calc(50% - 125px);
 }
+
+.toast {
+    padding-top: 5px;
+    padding-left: 10px;
+    padding-right: 15px;
+    margin: 20px 20px 20px 20px;
+    height: 30px;
+    color: white;
+    background-color: red;
+    opacity: 0.8;
+    border-radius: 8px;
+    top: 0;
+    right: 0;
+    z-index: 15;
+    position: fixed;
+    display: none;
+}
+
+#navbar {
+    width: 100%;
+    height: 60px;
+    background-color: #FE9000;
+}
+#navbar-headline {
+    padding-top: 7px;
+    padding-left: 15px;
+    padding-right: 15px;
+    height: 53px;
+    font-size: 34px;
+    float: left;
+}
+#navbar-logout {
+    height: 45px;
+    padding-top: 15px;
+    padding-left: 15px;
+    padding-right: 15px;
+    text-align: center;
+    font-size: 20px;
+    float: right;
+}
+#navbar-logout:hover {
+    background-color: gray;
+    cursor: pointer;
+}
+.navbar-item-header {
+    padding-top: 5px;
+    font-size: 12px;
+}
+.navbar-item-content {
+    font-size: 22px;
+}
+.navbar-item {
+    padding-left: 15px;
+    padding-right: 15px;
+    height: 60px;
+    float: right;
+}
